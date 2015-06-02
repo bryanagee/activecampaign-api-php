@@ -80,7 +80,7 @@ Tests are written in phpunit. After installing dependencies in composer, run:
 
 from the project root. To generate coverage reports, copy the provided phpunit.xml.dist
 to phpunit.xml and run the tests. This will create html reports that are viewable at
-`http://{project-path}/build/coverage/index.html.`
+`file://{project-path}/build/coverage/index.html.`
 
 ## Reporting Issues
 
