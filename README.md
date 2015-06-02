@@ -72,6 +72,16 @@ See our [examples file](examples.php) for more in-depth samples.
 
 [Click here to view our full API documentation.](http://activecampaign.com/api)
 
+## Testing
+
+Tests are written in phpunit. After installing dependencies in composer, run:
+
+    $ phpunit tests
+
+from the project root. To generate coverage reports, copy the provided phpunit.xml.dist
+to phpunit.xml and run the tests. This will create html reports that are viewable at
+`http://{project-path}/build/coverage/index.html.`
+
 ## Reporting Issues
 
 We'd love to help if you have questions or problems. Report issues using the [Github Issue Tracker](https://github.com/ActiveCampaign/activecampaign-api-php/issues) or email help@activecampaign.com.
