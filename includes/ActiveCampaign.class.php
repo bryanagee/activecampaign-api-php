@@ -4,20 +4,67 @@ if ( ! defined("ACTIVECAMPAIGN_URL") || ( ! defined("ACTIVECAMPAIGN_API_KEY") &&
     require_once(dirname(__FILE__) . "/config.php");
 }
 
-require_once("Connector.class.php");
-
 class ActiveCampaign extends AC_Connector
 {
-
+    /**
+     *
+     * @var string
+     */
     public $url_base;
+    
+    /**
+     *
+     * @var string
+     */
     public $url;
+    
+    /**
+     *
+     * @var string
+     */
     public $api_key;
+    
+    /**
+     *
+     * @todo verify type
+     * @var string
+     */
     public $track_email;
+    
+    /**
+     * 
+     * @todo verify type
+     * @var int TODO: verify type
+     */
     public $track_actid;
+    
+    /**
+     *
+     * @todo verify type
+     * @var string
+     */
     public $track_key;
+    
+    
+    /**
+     *
+     * @var int
+     */
     public $version = 1;
+    
+    /**
+     *
+     * @var bool
+     */
     public $debug   = false;
 
+    /**
+     * 
+     * @param string $url
+     * @param string $api_key
+     * @param string $api_user
+     * @param string $api_pass
+     */
     function __construct($url, $api_key, $api_user = "", $api_pass = "")
     {
         $this->url_base = $this->url = $url;
@@ -25,6 +72,11 @@ class ActiveCampaign extends AC_Connector
         parent::__construct($url, $api_key, $api_user, $api_pass);
     }
 
+    /**
+     * Sets the API version number to use for requests
+     * 
+     * @param int $version
+     */
     function version($version)
     {
         $this->version = (int) $version;
@@ -33,78 +85,105 @@ class ActiveCampaign extends AC_Connector
         }
     }
 
-    function api($path, $post_data = array())
+    /**
+     * 
+     * @param string $path
+     * @param array $postData
+     * @return string
+     */
+    function api($path, $postData = array())
     {
-        // IE: "contact/view"
-        $components = explode("/", $path);
-        $component  = $components[0];
+        // eg: "contact/view" 
+        $component  = $this->getComponentFromPath($path);
 
-        if (count($components) > 2) {
-            // IE: "contact/tag/add?whatever"
-            // shift off the first item (the component, IE: "contact").
-            array_shift($components);
-            // IE: convert to "tag_add?whatever"
-            $method_str = implode("_", $components);
-            $components = array($component, $method_str);
+        // If present, sets query string into $params
+        $params     = !preg_match("/\?/", $path) ? "" : substr($path, strpos($path, "?") + 1);
+        
+        // try block preserves original behavior
+        try {
+            $method = $this->getMethodFromPath($path);
+        } catch (Exception $e) {
+            return 'Invalid method.';
         }
+        
+        // eg: "contact" becomes "Contact"
+        $classname = 'AC_' . ucwords($component); 
 
-        if (preg_match("/\?/", $components[1])) {
-            // query params appended to method
-            // IE: contact/edit?overwrite=0
-            $method_arr = explode("?", $components[1]);
-            $method     = $method_arr[0];
-            $params     = $method_arr[1];
-        } else {
-            // just a method provided
-            // IE: "contact/view
-            if (isset($components[1])) {
-                $method = $components[1];
-                $params = "";
-            } else {
-                return "Invalid method.";
-            }
-        }
+        // eg: new AC_Contact(...);
+        $class = new $classname($this->version, $this->url_base, $this->url, $this->api_key);
 
-        // adjustments
-        if ($component == "list") {
-            // reserved word
-            $component = "list_";
-        } elseif ($component == "branding") {
-            $component = "design";
-        } elseif ($component == "sync") {
-            $component = "contact";
-            $method    = "sync";
-        } elseif ($component == "singlesignon") {
-            $component = "auth";
-        }
-
-        $class = ucwords($component); // IE: "contact" becomes "Contact"
-        $class = "AC_" . $class;
-        // IE: new Contact();
-
-        $add_tracking = false;
-        if ($class == "AC_Tracking")
-            $add_tracking = true;
-
-        $class = new $class($this->version, $this->url_base, $this->url,
-                            $this->api_key);
-        // IE: $contact->view()
-
-        if ($add_tracking) {
+        if ($classname === "AC_Tracking") {
             $class->track_email = $this->track_email;
             $class->track_actid = $this->track_actid;
             $class->track_key   = $this->track_key;
         }
 
-        if ($method == "list") {
-            // reserved word
-            $method = "list_";
-        }
-
         $class->debug = $this->debug;
 
-        $response = $class->$method($params, $post_data);
+        // eg: $contact->view()
+        $response = $class->$method($params, $postData);
         return $response;
+    }
+    
+    /**
+     * 
+     * @param string $path
+     * @return string
+     */
+    public function getComponentFromPath($path)
+    {
+        $component = substr($path, 0, strpos($path,"/"));
+        
+        switch($component) {
+            case 'list':
+                return 'list_';
+                
+            case 'branding':
+                return 'design';
+                
+            case 'singlesignon':
+                return 'auth';
+                
+            case 'sync':
+                return 'contact';
+        }
+        
+        return $component;
+    }
+    
+    /**
+     * 
+     * @param string $path
+     * @return string
+     * @throws Exception if there is no method portion of the path
+     */
+    public function getMethodFromPath($path)
+    {
+        // Special case: the only one method available for "sync" alias to contact
+        if (substr($path, 0, 4) === "sync") {
+            return "sync";
+        }
+        
+        // Get pattern based on whether there is a query string or not
+        $methodPattern = strstr($path, "?") ? "/\/(.*)\?/" : "/\/(.*)$/";
+        $matches = array();
+        
+        // Extract method portion of URL
+        preg_match($methodPattern, $path, $matches);
+        
+        if (empty($matches)) {
+            throw new Exception("No valid method found");
+        }
+        
+        // eg: tag/add -> tag_add
+        $method = preg_replace("/\//", "_", $matches[1]);
+        
+        if ($method == "list") {
+            // reserved word
+            return "list_";
+        }
+        
+        return $method;
     }
 
 }
