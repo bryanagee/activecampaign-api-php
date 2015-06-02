@@ -37,6 +37,23 @@ class ActiveCampaignTest extends \PHPUnit_Framework_TestCase
         $this->activeCampaign = new ActiveCampaign($url, $apiKey, $apiUser, $apiPassword);
     }
     
+    public function testInitialVersion()
+    {
+        $this->assertEquals(1, $this->activeCampaign->version);
+    }
+    
+    public function testChangeVersion()
+    {
+        $this->activeCampaign->version(2);
+        $this->assertEquals(2, $this->activeCampaign->version);
+    }
+    
+    public function testExceptionOnEmptyMethod()
+    {
+        $this->setExpectedException('Exception');
+        $this->activeCampaign->getMethodFromPath('too-short/');
+    }
+    
     /**
      * 
      * @dataProvider getComponentFromPathProvider
@@ -68,6 +85,8 @@ class ActiveCampaignTest extends \PHPUnit_Framework_TestCase
             ['singlesignon/method?cred=something','auth'],
             ['branding/view','design'],
             ['account/edit','account'],
+            ['sync/irrelevant/method/name', 'contact'],
+            ['list/', 'list_'],
         ];
     }
     
@@ -77,6 +96,7 @@ class ActiveCampaignTest extends \PHPUnit_Framework_TestCase
             ['sync/?params', 'sync'],
             ['contact/tag/add', 'tag_add'],
             ['contact/tag_add?someparams', 'tag_add'],
+            ['contact/list', 'list_'],
         ];
     }
     
