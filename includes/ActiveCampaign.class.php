@@ -171,7 +171,7 @@ class ActiveCampaign extends AC_Connector
         // Extract method portion of URL
         preg_match($methodPattern, $path, $matches);
         
-        if (empty($matches)) {
+        if (empty($matches[1])) {
             throw new Exception("No valid method found");
         }
         
